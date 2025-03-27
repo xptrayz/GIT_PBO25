@@ -9,7 +9,7 @@ Untuk mencoba run Kode C# Repo ini kalian bisa clone project ini dengan `git clo
 Mencoba melakukan contribution di Github, berikut beberapa step yang harus kalian lakukan
 
 1. Pendahuluan   
-  [Versi Github](https://github.blog/developer-skills/github/beginners-guide-to-github-creating-a-pull-request/)
+  [Versi Github](https://github.blog/developer-skills/github/beginners-guide-to-github-creating-a-pull-request/)  
   [Versi FCC](https://www.freecodecamp.org/news/how-to-make-your-first-pull-request-on-github-3/)
 3. Installasi Git  
   https://git-scm.com/downloads
