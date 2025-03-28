@@ -1,0 +1,111 @@
+name: Auto Merge Pull Request
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout kode dari pull request
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      # Setup Git config
+      - name: Setup Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # Coba merge untuk cek konflik
+      - name: Check for merge conflicts
+        id: check-conflicts
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          merge_result=$(git merge --no-commit --no-ff origin/${{ github.base_ref }} || echo "conflict")
+          if [[ "$merge_result" == "conflict" ]]; then
+            echo "Merge conflict detected"
+            echo "has_conflict=true" >> $GITHUB_OUTPUT
+          else
+            echo "No merge conflict"
+            echo "has_conflict=false" >> $GITHUB_OUTPUT
+            git merge --abort || true
+          fi
+        continue-on-error: true
+
+      # Comment jika ada konflik
+      - name: Comment on PR if conflict exists
+        if: steps.check-conflicts.outputs.has_conflict == 'true'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: '❌ Ada konflik saat mencoba merge. Silakan resolve konflik terlebih dahulu.'
+            })
+
+      # Cek apakah ada file .txt baru di directory list_pelaku
+      - name: Check for txt files in list_pelaku
+        id: check-files
+        if: steps.check-conflicts.outputs.has_conflict == 'false'
+        run: |
+          # Dapatkan daftar file yang diubah
+          git fetch origin ${{ github.base_ref }}
+          changed_files=$(git diff --name-only origin/${{ github.base_ref }} HEAD)
+          
+          # Cek apakah ada file .txt di list_pelaku
+          txt_in_list_pelaku=false
+          for file in $changed_files; do
+            if [[ "$file" =~ ^list_pelaku/.*\.txt$ ]]; then
+              txt_in_list_pelaku=true
+              break
+            fi
+          done
+          
+          echo "txt_found=$txt_in_list_pelaku" >> $GITHUB_OUTPUT
+
+      # Comment jika tidak ada file .txt di list_pelaku
+      - name: Comment if no txt files in list_pelaku
+        if: steps.check-conflicts.outputs.has_conflict == 'false' && steps.check-files.outputs.txt_found == 'false'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: '❌ Tidak ditemukan file .txt di directory `list_pelaku`. PR harus menambahkan minimal 1 file .txt di directory tersebut.'
+            })
+
+      # Merge PR jika semua kondisi terpenuhi
+      - name: Auto merge PR
+        if: steps.check-conflicts.outputs.has_conflict == 'false' && steps.check-files.outputs.txt_found == 'true'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            await github.rest.pulls.merge({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              merge_method: 'merge'
+            })
+
+      # Tambahkan label success jika merge berhasil
+      - name: Add success label
+        if: steps.check-conflicts.outputs.has_conflict == 'false' && steps.check-files.outputs.txt_found == 'true'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: ['auto-merged']
+            })
