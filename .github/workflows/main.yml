@@ -1,54 +1,148 @@
 name: Auto-merge PRs
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize]
-    
-permissions:
-  contents: write
-  pull-requests: write
-  issues: write
-      
+    paths:
+      - 'nama_pelaku/**/*.txt' # Hanya trigger jika file .txt di folder nama_pelaku diubah
+
 jobs:
   auto-merge:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      
     steps:
+      # Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 2
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v44
-        with:
-          files: Contributors.md
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Validate changes
-        id: validate
+      # Verifikasi file yang diubah
+      - name: Check modified files
+        id: check-files
         run: |
-          if [[ "${{ steps.changed-files.outputs.all_changed_files }}" == "Contributors.md" ]]; then
-            echo "only_contributors=true" >> $GITHUB_ENV
+          # Dapatkan daftar file yang diubah
+          PR_FILES=$(git diff --name-only origin/main...HEAD)
+          echo "Files changed:"
+          echo "$PR_FILES"
+          
+          # Filter hanya file .txt di folder nama_pelaku
+          VALID_FILES=$(echo "$PR_FILES" | grep -E '^nama_pelaku/[0-9]+\.txt$' || true)
+          
+          if [ -z "$VALID_FILES" ]; then
+            echo "::error::Hanya boleh mengubah file .txt di folder nama_pelaku/"
+            echo "valid_files=false" >> $GITHUB_ENV
           else
-            echo "only_contributors=false" >> $GITHUB_ENV
-          fi
-          if [[ ${{ github.event.pull_request.additions }} -le 2 && ${{ github.event.pull_request.deletions }} -le 1 ]]; then
-            echo "valid_changes=true" >> $GITHUB_ENV
-          else
-            echo "valid_changes=false" >> $GITHUB_ENV
+            echo "File valid: $VALID_FILES"
+            echo "valid_files=true" >> $GITHUB_ENV
           fi
 
+      # Verifikasi format nama file
+      - name: Validate filename format
+        if: env.valid_files == 'true'
+        id: validate-filename
+        run: |
+          PR_FILES=$(git diff --name-only origin/main...HEAD)
+          for file in $PR_FILES; do
+            if [[ "$file" =~ ^nama_pelaku/([0-9]{10,12})\.txt$ ]]; then
+              echo "Format file valid: $file"
+            else
+              echo "::error::Format nama file salah: $file (harus: nama_pelaku/NIM.txt)"
+              echo "valid_format=false" >> $GITHUB_ENV
+              exit 1
+            fi
+          done
+          echo "valid_format=true" >> $GITHUB_ENV
+
+      # Verifikasi isi file
+      - name: Validate file content
+        if: env.valid_files == 'true' && env.valid_format == 'true'
+        id: validate-content
+        run: |
+          PR_FILES=$(git diff --name-only origin/main...HEAD)
+          for file in $PR_FILES; do
+            LINE_COUNT=$(wc -l < "$file")
+            if [ "$LINE_COUNT" -ne 1 ]; then
+              echo "::error::File $file harus berisi tepat 1 baris"
+              echo "valid_content=false" >> $GITHUB_ENV
+              exit 1
+            fi
+            
+            CONTENT=$(cat "$file")
+            if [ -z "$CONTENT" ]; then
+              echo "::error::File $file tidak boleh kosong"
+              echo "valid_content=false" >> $GITHUB_ENV
+              exit 1
+            fi
+          done
+          echo "valid_content=true" >> $GITHUB_ENV
+
+      # Auto-merge jika semua valid
       - name: Merge PR
-        if: env.only_contributors == 'true' && env.valid_changes == 'true'
+        if: env.valid_files == 'true' && env.valid_format == 'true' && env.valid_content == 'true'
         uses: actions/github-script@v6
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            await github.rest.pulls.merge({
+            try {
+              const response = await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.issue.number,
+                merge_method: "squash"
+              });
+
+              if (response.status === 200) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body: "✅ PR berhasil di-merge! Terima kasih atas kontribusinya."
+                });
+              }
+            } catch (error) {
+              let errorMessage = "Gagal merge PR: " + error.message;
+              if (error.status === 405) {
+                errorMessage = "Terdapat konflik, mohon rebase dengan main branch terlebih dahulu";
+              }
+              core.setFailed(errorMessage);
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: errorMessage
+              });
+            }
+
+      # Beri komentar jika tidak valid
+      - name: Comment on invalid PR
+        if: env.valid_files == 'false' || env.valid_format == 'false' || env.valid_content == 'false'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            let message = "❌ PR tidak memenuhi syarat:\n";
+            
+            if (process.env.valid_files === 'false') {
+              message += "- Hanya boleh mengubah file .txt di folder nama_pelaku/\n";
+            }
+            
+            if (process.env.valid_format === 'false') {
+              message += "- Format nama file harus: nama_pelaku/NIM.txt (NIM 10-12 digit)\n";
+            }
+            
+            if (process.env.valid_content === 'false') {
+              message += "- File harus berisi tepat 1 baris teks (tidak boleh kosong)\n";
+            }
+            
+            message += "\nContoh yang valid:\n- nama_pelaku/242410103003.txt\n\nSilakan perbaiki PR Anda.";
+
+            await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              pull_number: context.issue.number,
-              merge_method: "squash"
+              issue_number: context.issue.number,
+              body: message
             });
-            // Add your celebration comment logic here
+            
