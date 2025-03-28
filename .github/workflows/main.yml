@@ -27,8 +27,8 @@ jobs:
       - name: Check for merge conflicts
         id: check-conflicts
         run: |
-          git fetch origin main
-          if git merge --no-commit --no-ff origin/main; then
+          git fetch origin master
+          if git merge --no-commit --no-ff origin/master; then
             echo "has_conflict=false" >> $GITHUB_OUTPUT
             git merge --abort || true
           else
@@ -52,8 +52,8 @@ jobs:
         id: check-files
         if: steps.check-conflicts.outputs.has_conflict == 'false'
         run: |
-          git fetch origin main
-          changed_files=$(git diff --name-only origin/main HEAD)
+          git fetch origin master
+          changed_files=$(git diff --name-only origin/master HEAD)
           txt_in_nama_pelaku=false
           for file in $changed_files; do
             if [[ "$file" =~ ^nama_pelaku/.*\.txt$ ]]; then
