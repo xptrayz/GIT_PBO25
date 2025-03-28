@@ -1,100 +1,67 @@
-name: Auto Merge Pull Request
-
-permissions:
-  contents: write
-  pull-requests: write
-  issues: write
+name: Auto Merge PR
 
 on:
   pull_request:
+    branches:
+      - master
     types: [opened, synchronize, reopened]
 
+permissions:
+  contents: write  # Untuk merge otomatis
+  pull-requests: write  # Untuk memberi komentar di PR
+
 jobs:
-  auto-merge:
+  check-and-merge:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v42
         with:
-          ref: ${{ github.head_ref }}
-          fetch-depth: 0
+          json: true
 
-      - name: Setup Git
+      - name: Check if changes are valid
+        id: validate-changes
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Check for merge conflicts
-        id: check-conflicts
-        run: |
-          git fetch origin master
-          if git merge --no-commit --no-ff origin/master; then
-            echo "has_conflict=false" >> $GITHUB_OUTPUT
-            git merge --abort || true
-          else
-            echo "has_conflict=true" >> $GITHUB_OUTPUT
-          fi
-        continue-on-error: true
-
-      - name: Comment on PR if conflict exists
-        if: steps.check-conflicts.outputs.has_conflict == 'true'
-        uses: actions/github-script@v6
-        with:
-          script: |
-            github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              body: '❌ PR ini memiliki konflik dan tidak bisa di-merge. Silakan resolve konflik terlebih dahulu.'
-            })
-
-      - name: Check if PR modifies .txt files in nama_pelaku
-        id: check-files
-        if: steps.check-conflicts.outputs.has_conflict == 'false'
-        run: |
-          git fetch origin master
-          changed_files=$(git diff --name-only origin/master HEAD)
-          txt_in_nama_pelaku=false
-          for file in $changed_files; do
-            if [[ "$file" =~ ^nama_pelaku/.*\.txt$ ]]; then
-              txt_in_nama_pelaku=true
-              break
+          VALID=true
+          for file in $(jq -r '.[]' <<< '${{ steps.changed-files.outputs.all_changed_files }}'); do
+            if [[ ! "$file" =~ ^nama_pelaku/.*\.txt$ ]]; then
+              echo "❌ Pull Request mengandung file di luar 'nama_pelaku/' atau bukan .txt: $file"
+              VALID=false
             fi
           done
-          echo "txt_found=$txt_in_nama_pelaku" >> $GITHUB_OUTPUT
+          echo "VALID=$VALID" >> $GITHUB_ENV
 
-      - name: Comment if no valid .txt files found
-        if: steps.check-conflicts.outputs.has_conflict == 'false' && steps.check-files.outputs.txt_found == 'false'
-        uses: actions/github-script@v6
-        with:
-          script: |
-            github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              body: '❌ PR ini tidak mengubah file .txt di directory `nama_pelaku`. Harap tambahkan atau ubah minimal satu file .txt di directory tersebut agar bisa di-merge.'
-            })
+      - name: Check for merge conflicts
+        id: check-conflict
+        run: |
+          CONFLICT=false
+          if git ls-files -u | grep -q .; then
+            echo "❌ PR memiliki konflik merge"
+            CONFLICT=true
+          fi
+          echo "CONFLICT=$CONFLICT" >> $GITHUB_ENV
 
-      - name: Auto merge PR
-        if: steps.check-conflicts.outputs.has_conflict == 'false' && steps.check-files.outputs.txt_found == 'true'
-        uses: actions/github-script@v6
-        with:
-          script: |
-            await github.rest.pulls.merge({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.payload.pull_request.number,
-              merge_method: 'merge'
-            });
+      - name: Comment on PR if invalid
+        if: env.VALID == 'false' || env.CONFLICT == 'true'
+        run: |
+          MESSAGE="🚨 PR tidak dapat di-merge otomatis.\n"
+          if [ "$VALID" == "false" ]; then
+            MESSAGE+="❌ PR mengandung file di luar 'nama_pelaku/' atau bukan .txt.\n"
+          fi
+          if [ "$CONFLICT" == "true" ]; then
+            MESSAGE+="❌ PR memiliki konflik merge.\n"
+          fi
+          gh pr comment "$PR_NUMBER" --body "$MESSAGE"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Add success label
-        if: steps.check-conflicts.outputs.has_conflict == 'false' && steps.check-files.outputs.txt_found == 'true'
-        uses: actions/github-script@v6
-        with:
-          script: |
-            github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              labels: ['auto-merged']
-            });
+      - name: Auto-merge PR
+        if: env.VALID == 'true' && env.CONFLICT == 'false'
+        run: gh pr merge "$PR_NUMBER" --auto --squash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
