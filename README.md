@@ -6,8 +6,8 @@ Untuk mencoba run Kode C# Repo ini kalian bisa clone project ini dengan `git clo
 
 
 ### Tugas buat yang maw maw ajah
-Mencoba melakukan contribution di Github, berikut beberapa step yang harus kalian lakukan
-
+Mencoba melakukan contribution di Github, berikut beberapa step yang harus kalian lakukan  
+_\- PS:_ **Jangan Lupa star ⭐ reponya cuy XD**
 1. Pendahuluan   
   [Versi Github](https://github.blog/developer-skills/github/beginners-guide-to-github-creating-a-pull-request/)  
   [Versi FCC](https://www.freecodecamp.org/news/how-to-make-your-first-pull-request-on-github-3/)
