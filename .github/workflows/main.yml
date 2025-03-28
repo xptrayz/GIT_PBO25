@@ -26,7 +26,7 @@ jobs:
         id: check-files
         run: |
           # Dapatkan daftar file yang diubah
-          PR_FILES=$(git diff --name-only origin/main...HEAD)
+          PR_FILES=$(git diff --name-only origin/master...HEAD)
           echo "Files changed:"
           echo "$PR_FILES"
           
@@ -46,7 +46,7 @@ jobs:
         if: env.valid_files == 'true'
         id: validate-filename
         run: |
-          PR_FILES=$(git diff --name-only origin/main...HEAD)
+          PR_FILES=$(git diff --name-only origin/master...HEAD)
           for file in $PR_FILES; do
             if [[ "$file" =~ ^nama_pelaku/([0-9]{10,12})\.txt$ ]]; then
               echo "Format file valid: $file"
@@ -63,7 +63,7 @@ jobs:
         if: env.valid_files == 'true' && env.valid_format == 'true'
         id: validate-content
         run: |
-          PR_FILES=$(git diff --name-only origin/main...HEAD)
+          PR_FILES=$(git diff --name-only origin/master...HEAD)
           for file in $PR_FILES; do
             LINE_COUNT=$(wc -l < "$file")
             if [ "$LINE_COUNT" -ne 1 ]; then
@@ -106,7 +106,7 @@ jobs:
             } catch (error) {
               let errorMessage = "Gagal merge PR: " + error.message;
               if (error.status === 405) {
-                errorMessage = "Terdapat konflik, mohon rebase dengan main branch terlebih dahulu";
+                errorMessage = "Terdapat konflik, mohon rebase dengan master branch terlebih dahulu";
               }
               core.setFailed(errorMessage);
               await github.rest.issues.createComment({
