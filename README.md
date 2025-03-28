@@ -5,7 +5,7 @@ Untuk mencoba run Kode C# Repo ini kalian bisa clone project ini dengan `git clo
 ---
 
 
-### Tugas buat yang maw maw ajah
+### Tugas buat yang maw maw ajah (ntar dapet achivement 😋)
 Mencoba melakukan contribution di Github, berikut beberapa step yang harus kalian lakukan  
 _\- PS:_ **Jangan Lupa star ⭐ reponya cuy XD**
 1. Pendahuluan   
