@@ -9,68 +9,42 @@ permissions:
   pull-requests: write
 
 jobs:
-  check-and-merge:
+  auto-merge:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Get changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v44
-        with:
-          files: nama_pelaku/**/*.txt
+      - name: Get PR number
+        run: echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
 
-      - name: Check if PR only modifies allowed files
-        id: validate
+      - name: Check modified files
+        id: check_files
         run: |
-          if [[ -z "${{ steps.changed-files.outputs.all_changed_files }}" ]]; then
-            echo "PR mengedit file di luar nama_pelaku/ atau bukan .txt"
-            echo "VALID=false" >> $GITHUB_ENV
-          else
-            echo "PR hanya mengedit file di nama_pelaku/ dan bertipe .txt"
-            echo "VALID=true" >> $GITHUB_ENV
+          CHANGED_FILES=$(git diff --name-only origin/master)
+          echo "Changed files: $CHANGED_FILES"
+          
+          INVALID_FILES=$(echo "$CHANGED_FILES" | grep -v '^nama_pelaku/.*\.txt$' || true)
+          
+          if [[ -n "$INVALID_FILES" ]]; then
+            echo "Invalid files detected: $INVALID_FILES"
+            exit 1
           fi
 
       - name: Check for merge conflicts
-        id: conflict-check
+        id: check_conflict
         run: |
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-          gh pr checkout "$PR_NUMBER"
-          if git merge --no-commit --no-ff origin/master; then
-            echo "No conflicts"
-            echo "CONFLICT=false" >> $GITHUB_ENV
+          git fetch origin master
+          if git merge-base --is-ancestor origin/master HEAD; then
+            echo "No conflicts detected."
           else
-            echo "Merge conflict detected"
-            echo "CONFLICT=true" >> $GITHUB_ENV
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Auto-merge PR
-        if: env.VALID == 'true' && env.CONFLICT == 'false'
-        run: |
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-          gh pr merge "$PR_NUMBER" --squash --admin
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Comment on PR if invalid or conflicts
-        if: env.VALID == 'false' || env.CONFLICT == 'true'
-        run: |
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-          MESSAGE=""
-          
-          if [[ "${{ env.VALID }}" == "false" ]]; then
-            MESSAGE+="❌ PR gagal: Harus mengedit file di 'nama_pelaku/' dan bertipe .txt\n"
-          fi
-          if [[ "${{ env.CONFLICT }}" == "true" ]]; then
-            MESSAGE+="⚠️ PR gagal: Terdeteksi konflik, mohon selesaikan dulu\n"
+            echo "Merge conflicts detected!"
+            exit 1
           fi
 
-          gh pr comment "$PR_NUMBER" --body "$MESSAGE"
+      - name: Merge Pull Request
+        run: gh pr merge "$PR_NUMBER" --auto --squash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
