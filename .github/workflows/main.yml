@@ -80,8 +80,8 @@ jobs:
                 const getRandomGif = () => celebrationGifs[Math.floor(Math.random() * celebrationGifs.length)]
 
                 const getMergeMessage = (username) => {
-                  const greeting = `Hello @${username}, selamat! Anda berhasil mengirimkan pull request. 🎉`;
-                  const feedbackMessage = `Kami ingin mendengar pendapat Anda tentang proyek ini. Beri tahu kami bagaimana kami bisa meningkatkan dengan berkomentar atau membuka issue di sini.`;
+                  const greeting = `Hello @${username}, selamat! Kamu berhasil mengirimkan pull request. 🎉`;
+                  const feedbackMessage = `Semangat menempuh perkuliahan yaw 😹. Oiya btw kamu dapet Achivement, bisa di cek di profilemu XD`;
                   const gif = `![celebration gif](${getRandomGif()})`;
 
                   return `${greeting}\n\n${feedbackMessage}\n\n${gif}`;
@@ -101,9 +101,9 @@ jobs:
               console.error("Error merging pull request:", error.message);
 
               if (error.status === 405 && error.response.data.message === "Pull Request is not mergeable") {
-                errMsg = `Hello @${context.payload.pull_request.user.login}, terima kasih atas pull request Anda. Kami menghargai kontribusi Anda. Namun, sebelum kami bisa merge, ada konflik dengan branch tujuan. \n\n Jangan khawatir! Anda bisa mengikuti panduan ini untuk menyelesaikan konflik merge. Setelah konflik diperbaiki dan perubahan di-push, repositori akan memeriksa kembali dan melanjutkan merge jika semuanya baik. \n\n Jika ada pertanyaan, jangan ragu untuk bertanya. Kami siap membantu!`;
+                errMsg = `Hello @${context.payload.pull_request.user.login}, Dawg ada konflik 💀🙏`;
               } else if (error.status === 409) {
-                errMsg = "Pull request memiliki konflik dengan branch tujuan. Silakan selesaikan konflik sebelum merging.";
+                errMsg = "Pull request memiliki konflik dengan branch tujuan. Selesaikan konflik sebelum merging.";
               } else {
                 errMsg = "Terjadi kesalahan saat merging pull request.";
               }
@@ -133,7 +133,7 @@ jobs:
 
             const botComment = comments.find(comment => comment.user.login === 'github-actions[bot]')
 
-            const body = `Terima kasih atas pull request Anda. Pull request ini berisi perubahan pada file yang memerlukan review. File yang berubah:\n\n${process.env.files_changed.trim() ? `\n\n${process.env.files_changed.trim().split(' ').map(file => `- ${file}`).join('\n')}` : ''}`
+            const body = `Pull request ini berisi perubahan pada file yang memerlukan review. File yang berubah:\n\n${process.env.files_changed.trim() ? `\n\n${process.env.files_changed.trim().split(' ').map(file => `- ${file}`).join('\n')}` : ''}`
 
             if (botComment) {
               await github.rest.issues.updateComment({
