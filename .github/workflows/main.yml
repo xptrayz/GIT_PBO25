@@ -1,105 +1,54 @@
-name: Auto Merge PR
-
+name: Auto-merge PRs
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
-
+    types: [opened, synchronize]
+    
 permissions:
   contents: write
   pull-requests: write
   issues: write
-
+      
 jobs:
-  check-and-merge:
+  auto-merge:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-          token: ${{ secrets.GH_TOKEN }}
+          fetch-depth: 2
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get changed files
         id: changed-files
         uses: tj-actions/changed-files@v44
         with:
-          files: nama_pelaku/**/*.txt
-          token: ${{ secrets.GH_TOKEN }}  # Ditambahkan token di sini
+          files: Contributors.md
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Validate PR
+      - name: Validate changes
         id: validate
         run: |
-          if [[ -z "${{ steps.changed-files.outputs.all_changed_files }}" ]]; then
-            echo "::error::PR hanya boleh mengedit file .txt di folder nama_pelaku/"
-            echo "VALID=false" >> $GITHUB_ENV
+          if [[ "${{ steps.changed-files.outputs.all_changed_files }}" == "Contributors.md" ]]; then
+            echo "only_contributors=true" >> $GITHUB_ENV
           else
-            echo "VALID=true" >> $GITHUB_ENV
+            echo "only_contributors=false" >> $GITHUB_ENV
+          fi
+          if [[ ${{ github.event.pull_request.additions }} -le 2 && ${{ github.event.pull_request.deletions }} -le 1 ]]; then
+            echo "valid_changes=true" >> $GITHUB_ENV
+          else
+            echo "valid_changes=false" >> $GITHUB_ENV
           fi
 
-      - name: Check mergeability
-        if: env.VALID == 'true'
-        id: check-merge
-        uses: actions/github-script@v6
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        with:
-          github-token: ${{ secrets.GH_TOKEN }}
-          script: AscendingNode
-            const { data: pr } = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: process.env.PR_NUMBER
-            });
-            
-            if (pr.mergeable_state === 'dirty') {
-              core.setOutput('CONFLICT', 'true');
-              console.log('Konflik terdeteksi');
-            } else {
-              core.setOutput('CONFLICT', 'false');
-              console.log('Tidak ada konflik');
-            }
-            return pr.mergeable;
-
-      - name: Auto merge if valid
-        if: env.VALID == 'true' && steps.check-merge.outputs.CONFLICT == 'false'
+      - name: Merge PR
+        if: env.only_contributors == 'true' && env.valid_changes == 'true'
         uses: actions/github-script@v6
         with:
-          github-token: ${{ secrets.GH_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             await github.rest.pulls.merge({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              pull_number: ${{ github.event.pull_request.number }},
-              merge_method: 'squash',
-              commit_title: `Auto-merge PR #${{ github.event.pull_request.number }}`,
-              commit_message: 'Merged by automation workflow'
+              pull_number: context.issue.number,
+              merge_method: "squash"
             });
-
-      - name: Post comment if invalid
-        if: env.VALID == 'false' || steps.check-merge.outputs.CONFLICT == 'true'
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GH_TOKEN }}
-          script: |
-            let message = '';
-            
-            if (process.env.VALID === 'false') {
-              message += '❌ **Error Validasi**: PR hanya boleh mengedit file .txt dalam folder `nama_pelaku/`\n\n';
-            }
-            
-            if ('${{ steps.check-merge.outputs.CONFLICT }}' === 'true') {
-              message += '⚠️ **Konflik Merge**: Mohon rebase branch Anda dengan main branch\n\n';
-            }
-            
-            message += '🔧 **Penyelesaian**:\n';
-            message += '- Pastikan file yang diubah berada di `nama_pelaku/nama_file.txt`\n';
-            message += '- Gunakan `git pull origin main` untuk resolve conflict\n\n';
-            message += '_Automated message by CI/CD_';
-
-            await github.rest.issues.createComment({
-              issue_number: ${{ github.event.pull_request.number }},
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: message
-            });
+            // Add your celebration comment logic here
