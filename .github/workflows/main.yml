@@ -7,44 +7,94 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write  # Diperlukan untuk komentar
 
 jobs:
-  auto-merge:
+  check-and-merge:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Get PR number
-        run: echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v44
+        with:
+          files: nama_pelaku/**/*.txt
 
-      - name: Check modified files
-        id: check_files
+      - name: Validate PR
+        id: validate
         run: |
-          CHANGED_FILES=$(git diff --name-only origin/master)
-          echo "Changed files: $CHANGED_FILES"
-          
-          INVALID_FILES=$(echo "$CHANGED_FILES" | grep -v '^nama_pelaku/.*\.txt$' || true)
-          
-          if [[ -n "$INVALID_FILES" ]]; then
-            echo "Invalid files detected: $INVALID_FILES"
-            exit 1
-          fi
-
-      - name: Check for merge conflicts
-        id: check_conflict
-        run: |
-          git fetch origin master
-          if git merge-base --is-ancestor origin/master HEAD; then
-            echo "No conflicts detected."
+          if [[ -z "${{ steps.changed-files.outputs.all_changed_files }}" ]]; then
+            echo "::error::PR hanya boleh mengedit file .txt di folder nama_pelaku/"
+            echo "VALID=false" >> $GITHUB_ENV
           else
-            echo "Merge conflicts detected!"
-            exit 1
+            echo "VALID=true" >> $GITHUB_ENV
           fi
 
-      - name: Merge Pull Request
-        run: gh pr merge "$PR_NUMBER" --auto --squash
+      - name: Check mergeability
+        if: env.VALID == 'true'
+        id: check-merge
+        uses: actions/github-script@v6
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: process.env.PR_NUMBER
+            });
+            
+            if (pr.mergeable_state === 'dirty') {
+              console.log('Konflik terdeteksi');
+              console.log(`::set-output name=CONFLICT::true`);
+            } else {
+              console.log('Tidak ada konflik');
+              console.log(`::set-output name=CONFLICT::false`);
+            }
+            return pr.mergeable;
+
+      - name: Auto merge if valid
+        if: env.VALID == 'true' && steps.check-merge.outputs.CONFLICT == 'false'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            await github.rest.pulls.merge({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: ${{ github.event.pull_request.number }},
+              merge_method: 'squash',
+              commit_title: `Auto-merge PR #${{ github.event.pull_request.number }}`,
+              commit_message: 'Merged by automation workflow'
+            });
+
+      - name: Post comment if invalid
+        if: env.VALID == 'false' || steps.check-merge.outputs.CONFLICT == 'true'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            let message = '';
+            
+            if (process.env.VALID === 'false') {
+              message += '❌ **Error Validasi**: PR hanya boleh mengedit file .txt dalam folder `nama_pelaku/`\n\n';
+            }
+            
+            if ('${{ steps.check-merge.outputs.CONFLICT }}' === 'true') {
+              message += '⚠️ **Konflik Merge**: Mohon rebase branch Anda dengan main branch\n\n';
+            }
+            
+            message += '🔧 **Penyelesaian**:\n';
+            message += '- Pastikan file yang diubah berada di `nama_pelaku/nama_file.txt`\n';
+            message += '- Gunakan `git pull origin main` untuk resolve conflict\n\n';
+            message += '_Automated message by CI/CD_';
+
+            await github.rest.issues.createComment({
+              issue_number: ${{ github.event.pull_request.number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
