@@ -27,15 +27,12 @@ jobs:
       - name: Check for merge conflicts
         id: check-conflicts
         run: |
-          git fetch origin ${{ github.base_ref }}
-          merge_result=$(git merge --no-commit --no-ff origin/${{ github.base_ref }} || echo "conflict")
-          if [[ "$merge_result" == "conflict" ]]; then
-            echo "Merge conflict detected"
-            echo "has_conflict=true" >> $GITHUB_OUTPUT
-          else
-            echo "No merge conflict"
+          git fetch origin main
+          if git merge --no-commit --no-ff origin/main; then
             echo "has_conflict=false" >> $GITHUB_OUTPUT
             git merge --abort || true
+          else
+            echo "has_conflict=true" >> $GITHUB_OUTPUT
           fi
         continue-on-error: true
 
@@ -48,25 +45,25 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.pull_request.number,
-              body: '❌ Ada konflik saat mencoba merge. Silakan resolve konflik terlebih dahulu.'
+              body: '❌ PR ini memiliki konflik dan tidak bisa di-merge. Silakan resolve konflik terlebih dahulu.'
             })
 
-      - name: Check for txt files in list_pelaku
+      - name: Check if PR modifies .txt files in nama_pelaku
         id: check-files
         if: steps.check-conflicts.outputs.has_conflict == 'false'
         run: |
-          git fetch origin ${{ github.base_ref }}
-          changed_files=$(git diff --name-only origin/${{ github.base_ref }} HEAD)
-          txt_in_list_pelaku=false
+          git fetch origin main
+          changed_files=$(git diff --name-only origin/main HEAD)
+          txt_in_nama_pelaku=false
           for file in $changed_files; do
-            if [[ "$file" =~ ^list_pelaku/.*\.txt$ ]]; then
-              txt_in_list_pelaku=true
+            if [[ "$file" =~ ^nama_pelaku/.*\.txt$ ]]; then
+              txt_in_nama_pelaku=true
               break
             fi
           done
-          echo "txt_found=$txt_in_list_pelaku" >> $GITHUB_OUTPUT
+          echo "txt_found=$txt_in_nama_pelaku" >> $GITHUB_OUTPUT
 
-      - name: Comment if no txt files in list_pelaku
+      - name: Comment if no valid .txt files found
         if: steps.check-conflicts.outputs.has_conflict == 'false' && steps.check-files.outputs.txt_found == 'false'
         uses: actions/github-script@v6
         with:
@@ -75,7 +72,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.pull_request.number,
-              body: '❌ Tidak ditemukan file .txt di directory `list_pelaku`. PR harus menambahkan minimal 1 file .txt di directory tersebut.'
+              body: '❌ PR ini tidak mengubah file .txt di directory `nama_pelaku`. Harap tambahkan atau ubah minimal satu file .txt di directory tersebut agar bisa di-merge.'
             })
 
       - name: Auto merge PR
@@ -88,7 +85,7 @@ jobs:
               repo: context.repo.repo,
               pull_number: context.payload.pull_request.number,
               merge_method: 'merge'
-            })
+            });
 
       - name: Add success label
         if: steps.check-conflicts.outputs.has_conflict == 'false' && steps.check-files.outputs.txt_found == 'true'
@@ -100,4 +97,4 @@ jobs:
               repo: context.repo.repo,
               issue_number: context.payload.pull_request.number,
               labels: ['auto-merged']
-            })
+            });
