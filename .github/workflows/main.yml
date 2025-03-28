@@ -44,27 +44,10 @@ jobs:
           
           echo "only_nama_pelaku_txt=$ONLY_NAMA_PELAKU_TXT" >> $GITHUB_ENV
 
-      # Periksa apakah PR hanya mengubah satu baris
-      - name: Check if PR has only one line change
-        run: |
-          ADDITIONS=${{ github.event.pull_request.additions }}
-          DELETIONS=${{ github.event.pull_request.deletions }}
-
-          echo "additions=$ADDITIONS" >> $GITHUB_ENV
-          echo "deletions=$DELETIONS" >> $GITHUB_ENV
-
-          if [[ $ADDITIONS == 1 && $DELETIONS == 0 ]]; then
-            echo "one_line_change=true" >> $GITHUB_ENV
-          elif [[ $ADDITIONS == 2 && $DELETIONS == 1 ]]; then
-            echo "one_line_change=true" >> $GITHUB_ENV
-          else
-            echo "one_line_change=false" >> $GITHUB_ENV
-          fi
-
-      # Merge pull request jika hanya file .txt di nama_pelaku yang berubah dan hanya satu baris
+      # Merge pull request jika hanya file .txt di nama_pelaku yang berubah
       - name: Merge PR
         id: merge_pr
-        if: env.only_nama_pelaku_txt == 'true' && env.one_line_change == 'true'
+        if: env.only_nama_pelaku_txt == 'true'
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
