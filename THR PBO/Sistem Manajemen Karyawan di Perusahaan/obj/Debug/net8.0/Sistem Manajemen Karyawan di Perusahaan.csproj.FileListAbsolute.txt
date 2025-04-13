@@ -1,0 +1,14 @@
+C:\Users\Adjastya Budi As\Documents\MATKUL SEMESTER 02\PBO\Sistem Manajemen Karyawan di Perusahaan\Sistem Manajemen Karyawan di Perusahaan\bin\Debug\net8.0\Sistem Manajemen Karyawan di Perusahaan.exe
+C:\Users\Adjastya Budi As\Documents\MATKUL SEMESTER 02\PBO\Sistem Manajemen Karyawan di Perusahaan\Sistem Manajemen Karyawan di Perusahaan\bin\Debug\net8.0\Sistem Manajemen Karyawan di Perusahaan.deps.json
+C:\Users\Adjastya Budi As\Documents\MATKUL SEMESTER 02\PBO\Sistem Manajemen Karyawan di Perusahaan\Sistem Manajemen Karyawan di Perusahaan\bin\Debug\net8.0\Sistem Manajemen Karyawan di Perusahaan.runtimeconfig.json
+C:\Users\Adjastya Budi As\Documents\MATKUL SEMESTER 02\PBO\Sistem Manajemen Karyawan di Perusahaan\Sistem Manajemen Karyawan di Perusahaan\bin\Debug\net8.0\Sistem Manajemen Karyawan di Perusahaan.dll
+C:\Users\Adjastya Budi As\Documents\MATKUL SEMESTER 02\PBO\Sistem Manajemen Karyawan di Perusahaan\Sistem Manajemen Karyawan di Perusahaan\bin\Debug\net8.0\Sistem Manajemen Karyawan di Perusahaan.pdb
+C:\Users\Adjastya Budi As\Documents\MATKUL SEMESTER 02\PBO\Sistem Manajemen Karyawan di Perusahaan\Sistem Manajemen Karyawan di Perusahaan\obj\Debug\net8.0\Sistem Manajemen Karyawan di Perusahaan.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Adjastya Budi As\Documents\MATKUL SEMESTER 02\PBO\Sistem Manajemen Karyawan di Perusahaan\Sistem Manajemen Karyawan di Perusahaan\obj\Debug\net8.0\Sistem Manajemen Karyawan di Perusahaan.AssemblyInfoInputs.cache
+C:\Users\Adjastya Budi As\Documents\MATKUL SEMESTER 02\PBO\Sistem Manajemen Karyawan di Perusahaan\Sistem Manajemen Karyawan di Perusahaan\obj\Debug\net8.0\Sistem Manajemen Karyawan di Perusahaan.AssemblyInfo.cs
+C:\Users\Adjastya Budi As\Documents\MATKUL SEMESTER 02\PBO\Sistem Manajemen Karyawan di Perusahaan\Sistem Manajemen Karyawan di Perusahaan\obj\Debug\net8.0\Sistem Manajemen Karyawan di Perusahaan.csproj.CoreCompileInputs.cache
+C:\Users\Adjastya Budi As\Documents\MATKUL SEMESTER 02\PBO\Sistem Manajemen Karyawan di Perusahaan\Sistem Manajemen Karyawan di Perusahaan\obj\Debug\net8.0\Sistem Manajemen Karyawan di Perusahaan.dll
+C:\Users\Adjastya Budi As\Documents\MATKUL SEMESTER 02\PBO\Sistem Manajemen Karyawan di Perusahaan\Sistem Manajemen Karyawan di Perusahaan\obj\Debug\net8.0\refint\Sistem Manajemen Karyawan di Perusahaan.dll
+C:\Users\Adjastya Budi As\Documents\MATKUL SEMESTER 02\PBO\Sistem Manajemen Karyawan di Perusahaan\Sistem Manajemen Karyawan di Perusahaan\obj\Debug\net8.0\Sistem Manajemen Karyawan di Perusahaan.pdb
+C:\Users\Adjastya Budi As\Documents\MATKUL SEMESTER 02\PBO\Sistem Manajemen Karyawan di Perusahaan\Sistem Manajemen Karyawan di Perusahaan\obj\Debug\net8.0\Sistem Manajemen Karyawan di Perusahaan.genruntimeconfig.cache
+C:\Users\Adjastya Budi As\Documents\MATKUL SEMESTER 02\PBO\Sistem Manajemen Karyawan di Perusahaan\Sistem Manajemen Karyawan di Perusahaan\obj\Debug\net8.0\ref\Sistem Manajemen Karyawan di Perusahaan.dll
